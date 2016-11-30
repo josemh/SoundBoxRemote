@@ -28,7 +28,7 @@ namespace SoundBoxRemoteLib.Utilities
             return obj;
         }
 
-        internal static string GetJsonFromURL(string url)
+        public static string GetJsonFromURL(string url)
         {
             string json = "";
             var client = new HttpClient();
@@ -55,11 +55,6 @@ namespace SoundBoxRemoteLib.Utilities
 
             return json;
         }
-
-        //public static List<T> LoadListFromURL<T>(string url)
-        //{
-        //    var list = new List<T>();
-        //}
 
     }
 }

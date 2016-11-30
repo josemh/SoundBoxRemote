@@ -1,5 +1,6 @@
 ﻿using Acr.DeviceInfo;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using SoundBoxRemoteLib.Utilities;
 using System;
 using System.Collections.Generic;
@@ -14,8 +15,9 @@ namespace SoundBoxRemoteLib.Models
     public class SoundBoxServer
     {
         private const int MIN_SUPPORTED_VERSION = 6;
-        private const string URL_SYSTEM_INFO = @"http://{0}:8095/api/v6/system";
-        private const string URL_SYSTEM_API = @"http://{0}:8095/api/";
+        public const string URL_SYSTEM_API = @"http://{0}:8095/api";
+        private const string URL_VERSION = @"/v6";
+        private const string URL_SYSTEM_INFO = URL_SYSTEM_API + URL_VERSION + @"/system";
         private const string URL_API_CODE = @"?ApiCode=";
 
         public string IPAddress { get; private set; }
@@ -41,11 +43,21 @@ namespace SoundBoxRemoteLib.Models
             string[] classes = ip.Split('.');
             var subnet = classes[0] + "." + classes[1] + "." + classes[2] + ".";
 
+            Task<SoundBoxServer>[] task = new Task<SoundBoxServer>[255];
             for (int i = 0; i < 255; i++)
             {
-                var checkIp = subnet + i.ToString();
-                if (CheckForServer(checkIp))
-                    servers.Add(SoundBoxServer.LoadFromIP(checkIp));
+                task[i] = Task<SoundBoxServer>.Factory.StartNew(() =>
+                {
+                    var checkIp = subnet + i.ToString();
+                    SoundBoxServer server = null;
+                    Debug.WriteLine("Checking server {0}", checkIp);
+                    if (CheckForServer(checkIp))
+                        server = SoundBoxServer.LoadFromIP(checkIp);
+
+                    return server;
+                });
+                if (task[i].Result != null)
+                    servers.Add(task[i].Result);
             }
 
             return servers;
@@ -68,24 +80,7 @@ namespace SoundBoxRemoteLib.Models
 
         private static string GetLocalIPAddress()
         {
-
             return DeviceInfo.Connectivity.IpAddress;
-
-            //IPAddress ip;
-
-            //WifiManager wifiManager = (WifiManager)context.GetSystemService(Device.WifiService);
-            //int ip = wifiManager.ConnectionInfo.IpAddress;
-
-            //System.Net.Dns
-            //var host = Dns.GetHostEntry(Dns.GetHostName());
-            //foreach (var ip in host.AddressList)
-            //{
-            //    if (ip.AddressFamily == AddressFamily.InterNetwork)
-            //    {
-            //        return ip.ToString();
-            //    }
-            //}
-            throw new Exception("Local IP Address Not Found!");
         }
 
         private static bool CheckForServer(string checkIp)
@@ -95,25 +90,20 @@ namespace SoundBoxRemoteLib.Models
             client.Timeout = new TimeSpan(0,0,0,0,10);
             try
             {
-                var task = Task.Run(async () =>
-                {
-                    return await client.GetAsync(url);
-                });
-                var response = task.Result;
+                var response = client.GetAsync(url).Result;
+
                 if (response.IsSuccessStatusCode)
                 {
-                    var result = Task.Run(async () =>
-                    {
-                        return await response.Content.ReadAsStringAsync();
-                    });
-                    APIVersion version = JsonConvert.DeserializeObject<APIVersion>(result.Result);
+                    var result = response.Content.ReadAsStringAsync().Result;
+                    APIVersion version = JsonConvert.DeserializeObject<APIVersion>(result);
                     return version.HighVersion >= MIN_SUPPORTED_VERSION;
                 }
                 else
                     return false;
             }
-            catch
+            catch(Exception ex)
             {
+                Debug.WriteLine("Error thrown: " + ex.ToString());
                 return false;
             }
         }
@@ -131,6 +121,59 @@ namespace SoundBoxRemoteLib.Models
                 return URL_API_CODE + APICode;
             else
                 return "";
+        }
+
+        internal string GetJson(string urlSuffix)
+        {
+            string json = "";
+            
+            //Build the URL using suffix and APICode if needed
+            var url = string.Format("{0}{1}/{2}{3}",
+                string.Format(URL_SYSTEM_API, IPAddress),
+                URL_VERSION,
+                urlSuffix.TrimEnd('/'),
+                ApiCodeRequired ? string.Format("{0}{1}", URL_API_CODE, APICode) : "" 
+                );
+            var client = new HttpClient();
+            
+            try
+            {
+                var task = Task.Run(async () =>
+                {
+                    return await client.GetAsync(url);
+                });
+                var response = task.Result;
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = Task.Run(async () =>
+                    {
+                        return await response.Content.ReadAsStringAsync();
+                    });
+                    json = result.Result;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.ToString());
+            }
+
+            return json;
+        }
+
+        internal T LoadObject<T>(string urlSuffix)
+        {
+            T obj = default(T);
+            obj = JsonConvert.DeserializeObject<T>(GetJson(urlSuffix));
+            return obj;
+        }
+
+        internal T LoadObject<T>(string urlSuffix, string jsonPath)
+        {
+            T obj = default(T);
+            var json = GetJson(urlSuffix);
+            var jobj = JObject.Parse(json);
+            obj = JsonConvert.DeserializeObject<T>(jobj[jsonPath].ToString());
+            return obj;
         }
 
     }
