@@ -18,10 +18,10 @@ namespace SoundBoxRemoteLib.Models
         private static SoundBoxServer activeServer;
         public static SoundBoxServer ActiveServer { get { return activeServer; } }
 
-        private const int MIN_SUPPORTED_VERSION = 6;
+        private const int MIN_SUPPORTED_VERSION = 7;
 
         public const string URL_SYSTEM_API = @"http://{0}:8095/api";
-        private const string URL_VERSION = @"/v6";
+        private const string URL_VERSION = @"/v7";
         private const string URL_SYSTEM_INFO = URL_SYSTEM_API + URL_VERSION + @"/system";
         private const string URL_API_CODE = @"?ApiCode=";
         private const string URL_BELL = "bell";
@@ -47,7 +47,7 @@ namespace SoundBoxRemoteLib.Models
             {
                 if (m_timers == null)
                 {
-                    m_timers = TalkTimer.GetFromServer(this);
+                    m_timers = TalkTimer.GetList(this);
                 }
                 return m_timers;
             }
@@ -72,12 +72,83 @@ namespace SoundBoxRemoteLib.Models
             {
                 if (m_songs == null)
                 {
-                    m_songs = Song.GetFromServer(this);
+                    m_songs = Song.GetList(this);
                 }
                 return m_songs;
             }
         }
-        
+
+        private List<Media> m_MediaItems;
+        public List<Media> MediaItems
+        {
+            get
+            {
+                if (m_MediaItems == null)
+                {
+                    m_MediaItems = Media.GetList(this);
+                }
+                return m_MediaItems;
+            }
+        }
+
+        private MediaStatus _mediaStatus;
+        public MediaStatus MediaStatus { get
+            {
+                if (_mediaStatus == null)
+                    _mediaStatus = new MediaStatus(this);
+                return _mediaStatus;
+            }}
+
+        public SoundBoxServer(string ipAddress)
+        {
+            this.IPAddress = ipAddress;
+        }
+
+        public bool SoundBell()
+        {
+            var json = PostUrl(URL_BELL);
+            if (json.Length > 0)
+            {
+                var jobj = JObject.Parse(json);
+                return bool.Parse(jobj["success"].ToString());
+            }
+            return false;
+        }
+
+        public bool PlayBackgroundMusic()
+        {
+            var music = LoadObject<BackgroundMusic>(URL_BACKGROUND_MUSIC);
+            if (music.Status == Song.SongStatusEnum.Ready)
+            {
+                var request = new JObject();
+                request.Add("action", "play");
+                var json = PostUrlWithPayload(URL_BACKGROUND_MUSIC, request.ToString());
+                if (json.Length > 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public bool StopBackgroundMusic()
+        {
+            var music = LoadObject<BackgroundMusic>(URL_BACKGROUND_MUSIC);
+            if (music.Status == Song.SongStatusEnum.Playing)
+            {
+                var request = new JObject();
+                request.Add("action", "stop");
+                var json = PostUrlWithPayload(URL_BACKGROUND_MUSIC, request.ToString());
+                if (json.Length > 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         #region Global Instantiator
 
         public static void SetActiveServer(SoundBoxServer activeServer)
@@ -160,56 +231,6 @@ namespace SoundBoxRemoteLib.Models
 
         #endregion
 
-        public SoundBoxServer(string ipAddress)
-        {
-            this.IPAddress = ipAddress;
-        }
-
-        public bool SoundBell()
-        {
-            var json = PostUrl(URL_BELL);
-            if (json.Length > 0)
-            {
-                var jobj = JObject.Parse(json);
-                return bool.Parse(jobj["success"].ToString());
-            }
-            return false;
-        }
-
-        public bool PlayBackgroundMusic()
-        {
-            var music = LoadObject<BackgroundMusic>(URL_BACKGROUND_MUSIC);
-            if (music.Status == Song.SongStatusEnum.Ready)
-            {
-                var request = new JObject();
-                request.Add("action", "play");
-                var json = PostUrlWithPayload(URL_BACKGROUND_MUSIC, request.ToString());
-                if (json.Length > 0)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        public bool StopBackgroundMusic()
-        {
-            var music = LoadObject<BackgroundMusic>(URL_BACKGROUND_MUSIC);
-            if (music.Status == Song.SongStatusEnum.Playing)
-            {
-                var request = new JObject();
-                request.Add("action", "stop");
-                var json = PostUrlWithPayload(URL_BACKGROUND_MUSIC, request.ToString());
-                if (json.Length > 0)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
         #region Internal Methods
 
         internal string GetAPICodeUrl()
@@ -258,7 +279,7 @@ namespace SoundBoxRemoteLib.Models
         {
             string json = "";
 
-            var url = GetUrl(urlSuffix);            
+            var url = GetUrl(urlSuffix);
             var client = new HttpClient();
 
             try
@@ -288,7 +309,9 @@ namespace SoundBoxRemoteLib.Models
         internal T LoadObject<T>(string urlSuffix)
         {
             T obj = default(T);
-            obj = JsonConvert.DeserializeObject<T>(GetJson(urlSuffix));
+            var json = GetJson(urlSuffix);
+            if (json.Length > 0)
+                obj = JsonConvert.DeserializeObject<T>(json);
             return obj;
         }
 
@@ -296,8 +319,11 @@ namespace SoundBoxRemoteLib.Models
         {
             T obj = default(T);
             var json = GetJson(urlSuffix);
-            var jobj = JObject.Parse(json);
-            obj = JsonConvert.DeserializeObject<T>(jobj[jsonPath].ToString());
+            if (json.Length > 0)
+            {
+                var jobj = JObject.Parse(json);
+                obj = JsonConvert.DeserializeObject<T>(jobj[jsonPath].ToString());
+            }
             return obj;
         }
 
@@ -306,7 +332,10 @@ namespace SoundBoxRemoteLib.Models
             var url = GetUrl(urlSuffix);
             var client = new HttpClient();
             var result = client.PostAsync(url, null).Result;
-            return result.Content.ReadAsStringAsync().Result;
+            if (result.IsSuccessStatusCode)
+                return result.Content.ReadAsStringAsync().Result;
+            else
+                return "";
         }
         internal string PostUrl(string urlSuffix, string value)
         {
@@ -314,15 +343,20 @@ namespace SoundBoxRemoteLib.Models
             var url = GetUrl(urlSuffix, value);
             var client = new HttpClient();
             var result = client.PostAsync(url, null).Result;
-            return result.Content.ReadAsStringAsync().Result;
+            if (result.IsSuccessStatusCode)
+                return result.Content.ReadAsStringAsync().Result;
+            else
+                return "";
         }
         internal string PostUrl(string urlSuffix, string value1, string value2)
         {
-            //Build the URL using suffix and APICode if needed
             var url = GetUrl(urlSuffix, value1, value2);
             var client = new HttpClient();
             var result = client.PostAsync(url, null).Result;
-            return result.Content.ReadAsStringAsync().Result;
+            if (result.IsSuccessStatusCode)
+                return result.Content.ReadAsStringAsync().Result;
+            else
+                return "";
         }
 
         internal string PostUrlWithPayload(string urlSuffix, string payload)
@@ -330,21 +364,37 @@ namespace SoundBoxRemoteLib.Models
             var url = GetUrl(urlSuffix);
             var client = new HttpClient();
             var result = client.PostAsync(url, new StringContent(payload)).Result;
-            return result.Content.ReadAsStringAsync().Result;
+            if (result.IsSuccessStatusCode)
+                return result.Content.ReadAsStringAsync().Result;
+            else
+                return "";
         }
         internal string PostUrlWithPayload(string urlSuffix, string value, string payload)
         {
             var url = GetUrl(urlSuffix, value);
             var client = new HttpClient();
             var result = client.PostAsync(url, new StringContent(payload)).Result;
-            return result.Content.ReadAsStringAsync().Result;
+            if (result.IsSuccessStatusCode)
+                return result.Content.ReadAsStringAsync().Result;
+            return "";
         }
         internal string PostUrlWithPayload(string urlSuffix, string value1, string value2, string payload)
         {
             var url = GetUrl(urlSuffix, value1, value2);
             var client = new HttpClient();
             var result = client.PostAsync(url, new StringContent(payload)).Result;
-            return result.Content.ReadAsStringAsync().Result;
+            if (result.IsSuccessStatusCode)
+                return result.Content.ReadAsStringAsync().Result;
+            else
+                return "";
+        }
+
+        internal Image GetImage(string urlSuffix, string value, string id)
+        {
+            var url = GetUrl(urlSuffix, value, id);
+            var image = new Image();
+            image.Source = url;
+            return image;
         }
 
         #endregion

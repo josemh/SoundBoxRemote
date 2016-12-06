@@ -9,10 +9,11 @@ using System.Threading.Tasks;
 
 namespace SoundBoxRemoteLib.Models
 {
-    public class TalkTimer
+    public class TalkTimer : BaseModel
     {
-        private const string URL_TIMER_SUFFIX = "timers";
-        private const string URL_TIMER_LIST = SoundBoxServer.URL_SYSTEM_API + @"/" + URL_TIMER_SUFFIX;
+        private const string URL_SUFFIX = "timers";
+        private const string URL_TIMER_LIST = SoundBoxServer.URL_SYSTEM_API + @"/" + URL_SUFFIX;
+        private const string JSON_LIST_INDEX = "timerInfo";
         
         public enum TimerStatusEnum
         {
@@ -20,9 +21,7 @@ namespace SoundBoxRemoteLib.Models
             Running,
             Stopped
         }
-
-        private SoundBoxServer _server;
-
+        
         public int TimerIndex { get; set; }
         public string InternalName { get; set; }
         public string LocalisedTitle { get; set; }
@@ -42,17 +41,11 @@ namespace SoundBoxRemoteLib.Models
 
         #region Global Initiator
 
-        public static List<TalkTimer> GetFromServer(SoundBoxServer server)
+        public static List<TalkTimer> GetList(SoundBoxServer server)
         {
-            List<TalkTimer> timers;
-
-            timers = server.LoadObject<List<TalkTimer>>(URL_TIMER_SUFFIX, "timerInfo");
-            foreach (var timer in timers)
-            {
-                timer._server = server;
-            }
-            return timers;
+            return GetListFromServer<TalkTimer>(server, URL_SUFFIX, JSON_LIST_INDEX);
         }
+
 
         #endregion
 
@@ -61,7 +54,7 @@ namespace SoundBoxRemoteLib.Models
             if (_server != null)
             {
                 //var server = SoundBoxServer.ActiveServer;
-                var json = _server.PostUrl(URL_TIMER_SUFFIX, Index.ToString());                
+                var json = _server.PostUrl(URL_SUFFIX, Index.ToString());                
                 if (json.Length > 0)
                 {
                     var jobj = JObject.Parse(json);
