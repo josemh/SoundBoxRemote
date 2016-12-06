@@ -8,19 +8,44 @@ namespace SoundBoxRemoteTests.ModelTests
     [TestClass]
     public class TalkTimerTests
     {
-        [TestMethod]
-        public void TimerLoadAllTest()
+
+        [TestInitialize]
+        public void TestInit()
         {
             List<SoundBoxServer> servers = SoundBoxServer.FindAllServers();
-            var timers = new List<TalkTimer>();
-
             if (servers.Count > 0)
             {
                 servers[0].APICode = "12345";
-                timers = TalkTimer.GetFromServer(servers[0]);
+                SoundBoxServer.SetActiveServer(servers[0]);
             }
+            else
+                Assert.Fail();
+        }
 
-            Assert.AreNotEqual(timers.Count, 0);
+        [TestMethod]
+        public void TimerLoadAllTest()
+        {
+            Assert.AreNotEqual(SoundBoxServer.ActiveServer.Timers.Count, 0);
+        }
+
+        [TestMethod]
+        public void TestRunTimer()
+        {
+            var server = SoundBoxServer.ActiveServer;
+            Assert.AreEqual(server.Timers[0].Status, TalkTimer.TimerStatusEnum.Ready);
+            server.Timers[0].PushStatus();
+            Assert.AreEqual(server.Timers[0].Status, TalkTimer.TimerStatusEnum.Running);
+            Assert.IsNotNull(server.ActiveTimer);
+            server.Timers[0].PushStatus();
+            Assert.AreEqual(server.Timers[0].Status, TalkTimer.TimerStatusEnum.Stopped);
+        }
+
+        [TestMethod]
+        public void TestSoundBell()
+        {
+            var server = SoundBoxServer.ActiveServer;
+            var result = server.SoundBell();
+            Assert.IsTrue(result);
         }
     }
 }

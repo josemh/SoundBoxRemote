@@ -14,11 +14,17 @@ namespace SoundBoxRemoteLib.Models
 {
     public class SoundBoxServer
     {
+
+        private static SoundBoxServer activeServer;
+        public static SoundBoxServer ActiveServer { get { return activeServer; } }
+
         private const int MIN_SUPPORTED_VERSION = 6;
+
         public const string URL_SYSTEM_API = @"http://{0}:8095/api";
         private const string URL_VERSION = @"/v6";
         private const string URL_SYSTEM_INFO = URL_SYSTEM_API + URL_VERSION + @"/system";
         private const string URL_API_CODE = @"?ApiCode=";
+        private const string URL_BELL = "bell";
 
         public string IPAddress { get; private set; }
         public string MachineName { get; set; }
@@ -33,7 +39,37 @@ namespace SoundBoxRemoteLib.Models
         public bool ApiCodeRequired { get; set; }
         public string APICode { get; set; }
 
+        private List<TalkTimer> m_timers;
+        public List<TalkTimer> Timers
+        {
+            get
+            {
+                if (m_timers == null)
+                {
+                    m_timers = TalkTimer.GetFromServer(this);
+                }
+                return m_timers;
+            }
+        }
+
+        public TalkTimer ActiveTimer
+        {
+            get
+            {
+                var index = Timers[0].RunningIndex;
+                if (index != -1)
+                    return Timers[index];
+                else
+                    return null;
+            }
+        }
+
         #region Global Instantiator
+
+        public static void SetActiveServer(SoundBoxServer activeServer)
+        {
+            SoundBoxServer.activeServer = activeServer;
+        }
 
         public static List<SoundBoxServer> FindAllServers()
         {
@@ -87,7 +123,7 @@ namespace SoundBoxRemoteLib.Models
         {
             string url = string.Format(URL_SYSTEM_API, checkIp);
             var client = new HttpClient();
-            client.Timeout = new TimeSpan(0,0,0,0,10);
+            client.Timeout = new TimeSpan(0, 0, 0, 0, 10);
             try
             {
                 var response = client.GetAsync(url).Result;
@@ -101,7 +137,7 @@ namespace SoundBoxRemoteLib.Models
                 else
                     return false;
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Debug.WriteLine("Error thrown: " + ex.ToString());
                 return false;
@@ -115,6 +151,17 @@ namespace SoundBoxRemoteLib.Models
             this.IPAddress = ipAddress;
         }
 
+        public bool SoundBell()
+        {
+            var json = PostUrl(URL_BELL);
+            if (json.Length > 0)
+            {
+                var jobj = JObject.Parse(json);
+                return bool.Parse(jobj["success"].ToString());
+            }
+            return false;
+        }
+
         internal string GetAPICodeUrl()
         {
             if (ApiCodeRequired)
@@ -123,19 +170,35 @@ namespace SoundBoxRemoteLib.Models
                 return "";
         }
 
-        internal string GetJson(string urlSuffix)
+        internal string GetUrl(string suffix)
         {
-            string json = "";
-            
-            //Build the URL using suffix and APICode if needed
             var url = string.Format("{0}{1}/{2}{3}",
                 string.Format(URL_SYSTEM_API, IPAddress),
                 URL_VERSION,
-                urlSuffix.TrimEnd('/'),
-                ApiCodeRequired ? string.Format("{0}{1}", URL_API_CODE, APICode) : "" 
+                suffix.TrimEnd('/'),
+                ApiCodeRequired ? string.Format("{0}{1}", URL_API_CODE, APICode) : ""
                 );
+            return url;
+        }
+        internal string GetUrl(string suffix1, string suffix2)
+        {
+            var url = string.Format("{0}{1}/{2}/{3}{4}",
+            string.Format(URL_SYSTEM_API, IPAddress),
+            URL_VERSION,
+            suffix1.TrimEnd('/'),
+            suffix2.TrimEnd('/'),
+            ApiCodeRequired ? string.Format("{0}{1}", URL_API_CODE, APICode) : ""
+            );
+            return url;
+        }
+
+        internal string GetJson(string urlSuffix)
+        {
+            string json = "";
+
+            var url = GetUrl(urlSuffix);            
             var client = new HttpClient();
-            
+
             try
             {
                 var task = Task.Run(async () =>
@@ -174,6 +237,22 @@ namespace SoundBoxRemoteLib.Models
             var jobj = JObject.Parse(json);
             obj = JsonConvert.DeserializeObject<T>(jobj[jsonPath].ToString());
             return obj;
+        }
+
+        internal string PostUrl(string urlSuffix)
+        {
+            var url = GetUrl(urlSuffix);
+            var client = new HttpClient();
+            var result = client.PostAsync(url, null).Result;
+            return result.Content.ReadAsStringAsync().Result;
+        }
+        internal string PostUrl(string urlSuffix, string value)
+        {
+            //Build the URL using suffix and APICode if needed
+            var url = GetUrl(urlSuffix, value);
+            var client = new HttpClient();
+            var result = client.PostAsync(url, null).Result;
+            return result.Content.ReadAsStringAsync().Result;
         }
 
     }

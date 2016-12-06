@@ -1,4 +1,6 @@
-﻿using SoundBoxRemoteLib.Utilities;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using SoundBoxRemoteLib.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,6 +20,8 @@ namespace SoundBoxRemoteLib.Models
             Running,
             Stopped
         }
+
+        private SoundBoxServer _server;
 
         public int TimerIndex { get; set; }
         public string InternalName { get; set; }
@@ -43,9 +47,37 @@ namespace SoundBoxRemoteLib.Models
             List<TalkTimer> timers;
 
             timers = server.LoadObject<List<TalkTimer>>(URL_TIMER_SUFFIX, "timerInfo");
+            foreach (var timer in timers)
+            {
+                timer._server = server;
+            }
             return timers;
         }
 
         #endregion
+
+        public void PushStatus()
+        {
+            if (_server != null)
+            {
+                //var server = SoundBoxServer.ActiveServer;
+                var json = _server.PostUrl(URL_TIMER_SUFFIX, Index.ToString());                
+                if (json.Length > 0)
+                {
+                    var jobj = JObject.Parse(json);
+                    var timer = JsonConvert.DeserializeObject<TalkTimer>(json);
+                    this.Status = timer.Status;
+
+                    foreach (var item in _server.Timers)
+                    {
+                        item.RunningIndex = timer.RunningIndex;
+                    }
+                }
+            }
+            else
+            {
+                throw new ArgumentNullException("Server not set on timer");
+            }
+        }
     }
 }
