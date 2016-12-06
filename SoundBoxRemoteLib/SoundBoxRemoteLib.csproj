@@ -37,6 +37,7 @@
   <ItemGroup>
     <Compile Include="Models\APIVersion.cs" />
     <Compile Include="Models\IServerItem.cs" />
+    <Compile Include="Models\Song.cs" />
     <Compile Include="Models\SoundBoxServer.cs" />
     <Compile Include="Models\TalkTimer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

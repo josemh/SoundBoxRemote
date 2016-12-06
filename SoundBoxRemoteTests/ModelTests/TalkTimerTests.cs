@@ -12,14 +12,17 @@ namespace SoundBoxRemoteTests.ModelTests
         [TestInitialize]
         public void TestInit()
         {
-            List<SoundBoxServer> servers = SoundBoxServer.FindAllServers();
-            if (servers.Count > 0)
+            if (SoundBoxServer.ActiveServer == null)
             {
-                servers[0].APICode = "12345";
-                SoundBoxServer.SetActiveServer(servers[0]);
+                List<SoundBoxServer> servers = SoundBoxServer.FindAllServers();
+                if (servers.Count > 0)
+                {
+                    servers[0].APICode = "12345";
+                    SoundBoxServer.SetActiveServer(servers[0]);
+                }
+                else
+                    Assert.Fail();
             }
-            else
-                Assert.Fail();
         }
 
         [TestMethod]

@@ -80,6 +80,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ModelTests\SongTests.cs" />
     <Compile Include="ModelTests\TalkTimerTests.cs" />
     <Compile Include="NetworkTests\ServerDiscoveryTests.cs" />
     <Compile Include="Tests.cs" />
