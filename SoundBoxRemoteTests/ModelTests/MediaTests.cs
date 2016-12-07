@@ -1,38 +1,19 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SoundBoxRemoteLib.Models;
-using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace SoundBoxRemoteTests.ModelTests
 {
     [TestClass]
-    public class MediaTests
+    public class MediaTests : BaseModelTest
     {
-
-        [TestInitialize]
-        public void TestInit()
-        {
-            if (SoundBoxServer.ActiveServer == null)
-            {
-                List<SoundBoxServer> servers = SoundBoxServer.FindAllServers();
-                if (servers.Count > 0)
-                {
-                    servers[0].APICode = "12345";
-                    SoundBoxServer.SetActiveServer(servers[0]);
-                }
-                else
-                    Assert.Fail();
-            }
-        }
-
+         
         [TestMethod]
         public void TestMediaLoadAll()
         {
-            Assert.AreNotEqual(SoundBoxServer.ActiveServer.MediaItems.Count, 0);
+            Assert.AreNotEqual(SoundBoxServer.ActiveServer.MediaItems.Count, 0, "No media was loaded");
         }
 
         [TestMethod]
@@ -40,22 +21,26 @@ namespace SoundBoxRemoteTests.ModelTests
         {
             var server = SoundBoxServer.ActiveServer;
             var video = server.MediaItems.First(m => m.Type == Media.MediaTypeEnum.Video);
-            Assert.IsNotNull(video);
+            Assert.IsNotNull(video, "No video media found");
 
-            Assert.IsTrue(video.Play());
+            Assert.IsTrue(video.Play(), "Video did not play");
+            Thread.Sleep(1500);
+
             server.MediaStatus.Update();
-            Assert.AreEqual(server.MediaStatus.Status, MediaStatus.MediaStatusEnum.Active);
-            Assert.AreEqual(video.Id, server.MediaStatus.Id);
+            Assert.AreEqual(server.MediaStatus.Status, MediaStatus.MediaStatusEnum.Active, "Video media status did not update");
+            Assert.AreEqual(video.Id, server.MediaStatus.Id, "Wrong video media Id being reported");
 
-            Thread.Sleep(500);
+            Assert.IsTrue(video.Pause(), "Video did not pause");
+            Thread.Sleep(1000);
 
-            Assert.IsTrue(video.Pause());
             server.MediaStatus.Update();
-            Assert.AreEqual(server.MediaStatus.Status, MediaStatus.MediaStatusEnum.Paused);
+            Assert.AreEqual(server.MediaStatus.Status, MediaStatus.MediaStatusEnum.Paused, "Video media status did not update");
 
-            Assert.IsTrue(video.Stop());
+            Assert.IsTrue(video.Stop(), "Video did not stop");
+            Thread.Sleep(1000);
+
             server.MediaStatus.Update();
-            Assert.AreEqual(server.MediaStatus.Status, MediaStatus.MediaStatusEnum.Inactive);
+            Assert.AreEqual(server.MediaStatus.Status, MediaStatus.MediaStatusEnum.Inactive, "Video media status did not update");
         }
 
         [TestMethod]
@@ -64,13 +49,19 @@ namespace SoundBoxRemoteTests.ModelTests
             var server = SoundBoxServer.ActiveServer;
             var image = server.MediaItems.Find(m => m.Type == Media.MediaTypeEnum.Image);
 
-            Assert.IsTrue(image.Play());
-            server.MediaStatus.Update();
-            Assert.AreEqual(server.MediaStatus.Status, MediaStatus.MediaStatusEnum.Active);
+            Assert.IsNotNull(image, "No image loaded");
 
-            Assert.IsTrue(image.Stop());
+            Assert.IsTrue(image.Play(), "Image did not display");
+            Thread.Sleep(1500);
+
             server.MediaStatus.Update();
-            Assert.AreEqual(server.MediaStatus.Status, MediaStatus.MediaStatusEnum.Inactive);
+            Assert.AreEqual(server.MediaStatus.Status, MediaStatus.MediaStatusEnum.Active, "Image media status not updating");
+            
+            Assert.IsTrue(image.Stop(), "Image did not stop");
+            Thread.Sleep(1000);
+
+            server.MediaStatus.Update();
+            Assert.AreEqual(server.MediaStatus.Status, MediaStatus.MediaStatusEnum.Inactive, "Image media status not updating");
         }
 
     }

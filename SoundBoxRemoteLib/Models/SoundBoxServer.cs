@@ -1,12 +1,14 @@
 ﻿using Acr.DeviceInfo;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Sockets.Plugin;
+using Sockets.Plugin.Abstractions;
 using SoundBoxRemoteLib.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 using Xamarin.Forms;
 
@@ -20,7 +22,8 @@ namespace SoundBoxRemoteLib.Models
 
         private const int MIN_SUPPORTED_VERSION = 7;
 
-        public const string URL_SYSTEM_API = @"http://{0}:8095/api";
+        public const string TCP_SERVER_PORT = "8095";
+        public const string URL_SYSTEM_API = @"http://{0}:" + TCP_SERVER_PORT + "/api";
         private const string URL_VERSION = @"/v7";
         private const string URL_SYSTEM_INFO = URL_SYSTEM_API + URL_VERSION + @"/system";
         private const string URL_API_CODE = @"?ApiCode=";
@@ -92,12 +95,15 @@ namespace SoundBoxRemoteLib.Models
         }
 
         private MediaStatus _mediaStatus;
-        public MediaStatus MediaStatus { get
+        public MediaStatus MediaStatus
+        {
+            get
             {
                 if (_mediaStatus == null)
                     _mediaStatus = new MediaStatus(this);
                 return _mediaStatus;
-            }}
+            }
+        }
 
         public SoundBoxServer(string ipAddress)
         {
@@ -182,6 +188,52 @@ namespace SoundBoxRemoteLib.Models
             }
 
             return servers;
+        }
+
+        public static List<SoundBoxServer> FindServersUDP()
+        {
+            var servers = new List<SoundBoxServer>();
+            string[] classes = GetLocalIPAddress().Split('.');
+            var broadcast = classes[0] + "." + classes[1] + "." + classes[2] + ".255";
+            var port = int.Parse(TCP_SERVER_PORT);
+
+            var ips = BroadcastUDP(broadcast).Result;
+            foreach (var ip in ips)
+            {
+                servers.Add(new Models.SoundBoxServer(ip));
+            }
+                                    
+            return servers;
+        }
+
+        private static async Task<List<String>> BroadcastUDP(string ipAddress)
+        {
+            var client = new UdpSocketClient();
+            var msg = Encoding.UTF8.GetBytes("SoundBox");
+            var replies = new List<string>();
+            var port = int.Parse(TCP_SERVER_PORT);
+
+            client.MessageReceived += new EventHandler<UdpSocketMessageReceivedEventArgs>(
+                delegate (object sender, UdpSocketMessageReceivedEventArgs args)
+                {
+                    var reply = Encoding.UTF8.GetString(args.ByteData, 0, args.ByteData.Length);
+                    var tab = Convert.ToChar(9);
+                    if (reply.Contains("SoundBox" + tab.ToString()))
+                    {
+                        var parts = reply.Split(tab);
+                        if (!replies.Contains(parts[1]))
+                            replies.Add(parts[1]);
+                    }
+                });
+
+            await client.SendToAsync(msg, ipAddress, port);
+            await Task.Delay(100);
+
+            await client.ConnectAsync(ipAddress, port);
+            await client.SendAsync(msg);
+            await Task.Delay(1000);
+
+            return replies;
         }
 
         public static SoundBoxServer LoadFromIP(string ipAddress)

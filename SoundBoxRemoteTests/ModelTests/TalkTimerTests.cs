@@ -1,46 +1,39 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SoundBoxRemoteLib.Models;
-using System;
-using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace SoundBoxRemoteTests.ModelTests
 {
     [TestClass]
-    public class TalkTimerTests
+    public class TalkTimerTests : BaseModelTest
     {
 
-        [TestInitialize]
-        public void TestInit()
-        {
-            if (SoundBoxServer.ActiveServer == null)
-            {
-                List<SoundBoxServer> servers = SoundBoxServer.FindAllServers();
-                if (servers.Count > 0)
-                {
-                    servers[0].APICode = "12345";
-                    SoundBoxServer.SetActiveServer(servers[0]);
-                }
-                else
-                    Assert.Fail();
-            }
-        }
-
         [TestMethod]
-        public void TimerLoadAllTest()
+        public void TestTimerLoadAll()
         {
-            Assert.AreNotEqual(SoundBoxServer.ActiveServer.Timers.Count, 0);
+            Assert.AreNotEqual(SoundBoxServer.ActiveServer.Timers.Count, 0, "No timers loaded");
         }
 
         [TestMethod]
         public void TestRunTimer()
         {
             var server = SoundBoxServer.ActiveServer;
-            Assert.AreEqual(server.Timers[0].Status, TalkTimer.TimerStatusEnum.Ready);
             server.Timers[0].PushStatus();
-            Assert.AreEqual(server.Timers[0].Status, TalkTimer.TimerStatusEnum.Running);
-            Assert.IsNotNull(server.ActiveTimer);
+
+            // SoundBox delays timer start by 1500 ms to allow display to sync up.  
+            // Must include longer delay here to allow timer to actually start
+            Task.Delay(2000);
+
+            Assert.AreEqual(server.Timers[0].Status, TalkTimer.TimerStatusEnum.Running, "Timer did not run");
+            Assert.IsNotNull(server.ActiveTimer, "No active timer found");
             server.Timers[0].PushStatus();
-            Assert.AreEqual(server.Timers[0].Status, TalkTimer.TimerStatusEnum.Stopped);
+
+            Task.Delay(1000);
+
+            Assert.AreEqual(server.Timers[0].Status, TalkTimer.TimerStatusEnum.Stopped, "Timer did not stop");
+
+            //Reset timer
+            server.Timers[0].PushStatus();
         }
 
         [TestMethod]

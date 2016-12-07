@@ -100,7 +100,7 @@ namespace SoundBoxRemoteLib.Models
         }
 
         private bool DoAction(string action)
-        {
+        {            
             var jobj = GetPostJson(action);
             var json = _server.PostUrlWithPayload(URL_SUFFIX, jobj.ToString());
             if (json.Length > 0)
@@ -112,17 +112,17 @@ namespace SoundBoxRemoteLib.Models
 
         public bool Play()
         {
-            return DoAction("play");
+                return DoAction("play");
         }
 
         public bool Pause()
         {
-            return DoAction("pause");
+                return DoAction("pause");
         }
 
         public bool Stop()
         {
-            return DoAction("stop");
+                return DoAction("stop");
         }
 
         public bool Next()

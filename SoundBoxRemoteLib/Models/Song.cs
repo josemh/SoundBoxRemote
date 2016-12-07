@@ -67,11 +67,26 @@ namespace SoundBoxRemoteLib.Models
                     return true;
                 }
             }
-            //else
-            //    throw new InvalidOperationException("Song is already playing");
-
             return false;
         }
 
+        public bool StopSong()
+        {
+            var songs = Song.GetList(_server);
+
+            if (!songs.Any(s => s.Status != SongStatusEnum.Ready))
+                return false;
+            else if ((songs[Index].Status == SongStatusEnum.Playing))
+            {
+                var json = _server.PostUrl(URL_SUFFIX, Index.ToString());
+                if (json.Length > 0)
+                {
+                    var song = JsonConvert.DeserializeObject<Song>(json);
+                    Status = song.Status;
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 }
