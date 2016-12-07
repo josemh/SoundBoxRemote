@@ -6,11 +6,16 @@ using System.Threading.Tasks;
 
 namespace SoundBoxRemoteLib.Models
 {
-    public class BaseModel
+    public class BaseModel : IServerItem
     {
 
         internal SoundBoxServer _server;
-
+        public SoundBoxServer Server
+        {
+            get { return _server; }
+            internal set { _server = value; }
+        }
+        
         #region Global Initiator
 
         public static List<T> GetListFromServer<T>(SoundBoxServer server, string urlSuffix, string jsonIndexer) where T : BaseModel

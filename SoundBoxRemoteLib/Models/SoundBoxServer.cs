@@ -202,7 +202,7 @@ namespace SoundBoxRemoteLib.Models
             {
                 servers.Add(new Models.SoundBoxServer(ip));
             }
-                                    
+
             return servers;
         }
 
@@ -251,7 +251,7 @@ namespace SoundBoxRemoteLib.Models
                 throw new Exception();
         }
 
-        private static string GetLocalIPAddress()
+        internal static string GetLocalIPAddress()
         {
             return DeviceInfo.Connectivity.IpAddress;
         }
@@ -458,6 +458,99 @@ namespace SoundBoxRemoteLib.Models
             public Song.SongStatusEnum Status { get; set; }
             public bool AutoStopEnabled { get; set; }
             public bool AutoStopped { get; set; }
+        }
+
+        #endregion
+
+        #region Event Handler
+
+        private const int PORT_LISTEN_DEFAULT = 9550;
+
+        private int _listenPort = PORT_LISTEN_DEFAULT;
+        private TcpSocketListener _listener;
+
+        public delegate void SoundBoxEventHandler(object sender, SoundBoxEventArgs e);
+        public event SoundBoxEventHandler SoundBoxEvent;
+
+        public bool SubscribeEvents()
+        {
+
+            if (StartListener().Result)
+            {
+                var url = GetUrl(EventInfo.GetSubscribeUrlSuffix());
+                var jobj = new JObject();
+                jobj.Add("address", GetLocalIPAddress());
+                jobj.Add("port", _listenPort);
+
+                var client = new HttpClient();
+                var result = client.PostAsync(url, new StringContent(jobj.ToString())).Result;
+
+                if (result.IsSuccessStatusCode)
+                    return true;
+            }
+            return false;
+        }
+
+        public bool UnSubscribeEvents()
+        {
+            if (_listener != null)
+            {
+                var url = GetUrl(EventInfo.GetUnSubscribeUrlSuffix());
+                var jobj = new JObject();
+                jobj.Add("address", GetLocalIPAddress());
+                jobj.Add("port", _listenPort);
+
+                var client1 = new HttpClient();
+                var result = client1.PostAsync(url, new StringContent(jobj.ToString())).Result;
+
+                if (!result.IsSuccessStatusCode)
+                {
+                    Debug.WriteLine("Client disconnected");
+                    _listener.StopListeningAsync();
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private async Task<bool> StartListener()
+        {
+            try
+            {
+                //TODO: Handle port already open error
+                _listener = new TcpSocketListener();
+                _listener.ConnectionReceived += async (sender, args) =>
+                {
+                    Debug.WriteLine("Client connected");
+
+                    var msg = new StringBuilder();
+                    int bytesRead = -1;
+                    byte[] buf = new byte[1];
+
+                    while (bytesRead != 0)
+                    {
+                        bytesRead = await args.SocketClient.ReadStream.ReadAsync(buf, 0, 1);
+                        msg.Append(Convert.ToChar(buf[0]));
+                    }
+                    msg.Remove(msg.Length - 1, 1);
+                    RaiseSoundboxEvent(msg.ToString());
+                };
+
+                await _listener.StartListeningAsync(_listenPort);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.ToString());
+                return false;
+            }
+        }
+
+        private void RaiseSoundboxEvent(string json)
+        {
+            if (SoundBoxEvent != null)
+                SoundBoxEvent(this, new SoundBoxEventArgs(json));
         }
 
         #endregion

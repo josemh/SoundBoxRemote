@@ -111,6 +111,7 @@
     <Compile Include="ModelTests\BaseModelTest.cs" />
     <Compile Include="ModelTests\MediaTests.cs" />
     <Compile Include="ModelTests\SongTests.cs" />
+    <Compile Include="ModelTests\SoundBoxServerTests.cs" />
     <Compile Include="ModelTests\TalkTimerTests.cs" />
     <Compile Include="NetworkTests\ServerDiscoveryTests.cs" />
     <Compile Include="Tests.cs" />

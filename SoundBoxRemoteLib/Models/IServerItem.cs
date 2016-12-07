@@ -8,6 +8,6 @@ namespace SoundBoxRemoteLib.Models
 {
     interface IServerItem
     {
-        SoundBoxServer Server { get; set; }
+        SoundBoxServer Server { get; }
     }
 }

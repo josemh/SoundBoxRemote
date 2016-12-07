@@ -37,10 +37,12 @@
   <ItemGroup>
     <Compile Include="Models\APIVersion.cs" />
     <Compile Include="Models\BaseModel.cs" />
+    <Compile Include="Models\EventInfo.cs" />
     <Compile Include="Models\IServerItem.cs" />
     <Compile Include="Models\Media.cs" />
     <Compile Include="Models\MediaStatus.cs" />
     <Compile Include="Models\Song.cs" />
+    <Compile Include="Models\SoundBoxEventArgs.cs" />
     <Compile Include="Models\SoundBoxServer.cs" />
     <Compile Include="Models\TalkTimer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
