@@ -195,8 +195,7 @@ namespace SoundBoxRemoteLib.Models
             var servers = new List<SoundBoxServer>();
             string[] classes = GetLocalIPAddress().Split('.');
             var broadcast = classes[0] + "." + classes[1] + "." + classes[2] + ".255";
-            var port = int.Parse(TCP_SERVER_PORT);
-
+            
             var ips = BroadcastUDP(broadcast).Result;
             foreach (var ip in ips)
             {
@@ -239,7 +238,6 @@ namespace SoundBoxRemoteLib.Models
         public static SoundBoxServer LoadFromIP(string ipAddress)
         {
             string url = string.Format(URL_SYSTEM_INFO, ipAddress);
-            var client = new HttpClient();
             SoundBoxServer server = JsonLoader.LoadFromURL<SoundBoxServer>(url);
             server.IPAddress = ipAddress;
             return server;
