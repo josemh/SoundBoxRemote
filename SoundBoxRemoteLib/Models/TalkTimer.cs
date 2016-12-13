@@ -57,7 +57,6 @@ namespace SoundBoxRemoteLib.Models
                 var json = _server.PostUrl(URL_SUFFIX, Index.ToString());                
                 if (json.Length > 0)
                 {
-                    var jobj = JObject.Parse(json);
                     var timer = JsonConvert.DeserializeObject<TalkTimer>(json);
                     this.Status = timer.Status;
 
