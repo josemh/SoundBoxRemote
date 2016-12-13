@@ -519,22 +519,7 @@ namespace SoundBoxRemoteLib.Models
             {
                 //TODO: Handle port already open error
                 _listener = new TcpSocketListener();
-                _listener.ConnectionReceived += async (sender, args) =>
-                {
-                    Debug.WriteLine("Client connected");
-
-                    var msg = new StringBuilder();
-                    int bytesRead = -1;
-                    byte[] buf = new byte[1];
-
-                    while (bytesRead != 0)
-                    {
-                        bytesRead = await args.SocketClient.ReadStream.ReadAsync(buf, 0, 1);
-                        msg.Append(Convert.ToChar(buf[0]));
-                    }
-                    msg.Remove(msg.Length - 1, 1);
-                    RaiseSoundboxEvent(msg.ToString());
-                };
+                _listener.ConnectionReceived += Listener_ConnectionReceived;
 
                 await _listener.StartListeningAsync(_listenPort);
 
@@ -545,6 +530,22 @@ namespace SoundBoxRemoteLib.Models
                 Debug.WriteLine(ex.ToString());
                 return false;
             }
+        }
+
+        private async void Listener_ConnectionReceived(object sender, TcpSocketListenerConnectEventArgs e)
+        {
+            Debug.WriteLine("Client connected");
+
+            var msg = new StringBuilder();
+            int bytesRead = -1;
+            byte[] buf = new byte[5];
+
+            while (bytesRead != 0)
+            {
+                bytesRead = await e.SocketClient.ReadStream.ReadAsync(buf, 0, 5);
+                msg.Append(Encoding.UTF8.GetString(buf, 0, bytesRead));
+            }
+            RaiseSoundboxEvent(msg.ToString());
         }
 
         private void RaiseSoundboxEvent(string json)
