@@ -31,29 +31,32 @@ namespace SoundBoxRemoteLib.Utilities
         public static string GetJsonFromURL(string url)
         {
             string json = "";
-            var client = new HttpClient();
-            try
+            using (var client = new HttpClient())
             {
-                var task = Task.Run(async () =>
+                try
                 {
-                    return await client.GetAsync(url);
-                });
-                var response = task.Result;
-                if (response.IsSuccessStatusCode)
-                {
-                    var result = Task.Run(async () =>
+                    var task = Task.Run(async () =>
                     {
-                        return await response.Content.ReadAsStringAsync();
+                        return await client.GetAsync(url);
                     });
-                    json = result.Result;
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine(ex.ToString());
-            }
 
-            return json;
+                    var response = task.Result;
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var result = Task.Run(async () =>
+                        {
+                            return await response.Content.ReadAsStringAsync();
+                        });
+                        json = result.Result;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine(ex.ToString());
+                }
+
+                return json;
+            }
         }
 
     }

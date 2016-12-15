@@ -257,25 +257,27 @@ namespace SoundBoxRemoteLib.Models
         private static bool CheckForServer(string checkIp)
         {
             string url = string.Format(URL_SYSTEM_API, checkIp);
-            var client = new HttpClient();
-            client.Timeout = new TimeSpan(0, 0, 0, 0, 10);
-            try
+            using (var client = new HttpClient())
             {
-                var response = client.GetAsync(url).Result;
-
-                if (response.IsSuccessStatusCode)
+                client.Timeout = new TimeSpan(0, 0, 0, 0, 10);
+                try
                 {
-                    var result = response.Content.ReadAsStringAsync().Result;
-                    APIVersion version = JsonConvert.DeserializeObject<APIVersion>(result);
-                    return version.HighVersion >= MIN_SUPPORTED_VERSION;
-                }
-                else
+                    var response = client.GetAsync(url).Result;
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var result = response.Content.ReadAsStringAsync().Result;
+                        APIVersion version = JsonConvert.DeserializeObject<APIVersion>(result);
+                        return version.HighVersion >= MIN_SUPPORTED_VERSION;
+                    }
+
                     return false;
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine("Error thrown: " + ex.ToString());
-                return false;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine("Error thrown: " + ex.ToString());
+                    return false;
+                }
             }
         }
 
@@ -330,30 +332,31 @@ namespace SoundBoxRemoteLib.Models
             string json = "";
 
             var url = GetUrl(urlSuffix);
-            var client = new HttpClient();
-
-            try
+            using (var client = new HttpClient())
             {
-                var task = Task.Run(async () =>
+                try
                 {
-                    return await client.GetAsync(url);
-                });
-                var response = task.Result;
-                if (response.IsSuccessStatusCode)
-                {
-                    var result = Task.Run(async () =>
+                    var task = Task.Run(async () =>
                     {
-                        return await response.Content.ReadAsStringAsync();
+                        return await client.GetAsync(url);
                     });
-                    json = result.Result;
+                    var response = task.Result;
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var result = Task.Run(async () =>
+                        {
+                            return await response.Content.ReadAsStringAsync();
+                        });
+                        json = result.Result;
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine(ex.ToString());
-            }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine(ex.ToString());
+                }
 
-            return json;
+                return json;
+            }
         }
 
         internal T LoadObject<T>(string urlSuffix)
@@ -380,63 +383,80 @@ namespace SoundBoxRemoteLib.Models
         internal string PostUrl(string urlSuffix)
         {
             var url = GetUrl(urlSuffix);
-            var client = new HttpClient();
-            var result = client.PostAsync(url, null).Result;
-            if (result.IsSuccessStatusCode)
-                return result.Content.ReadAsStringAsync().Result;
-            else
+            using (var client = new HttpClient())
+            {
+                var result = client.PostAsync(url, null).Result;
+                if (result.IsSuccessStatusCode)
+                    return result.Content.ReadAsStringAsync().Result;
+             
                 return "";
+            }
         }
+
         internal string PostUrl(string urlSuffix, string value)
         {
             //Build the URL using suffix and APICode if needed
             var url = GetUrl(urlSuffix, value);
-            var client = new HttpClient();
-            var result = client.PostAsync(url, null).Result;
-            if (result.IsSuccessStatusCode)
-                return result.Content.ReadAsStringAsync().Result;
-            else
+            using (var client = new HttpClient())
+            {
+                var result = client.PostAsync(url, null).Result;
+                if (result.IsSuccessStatusCode)
+                    return result.Content.ReadAsStringAsync().Result;
+             
                 return "";
+            }
         }
+
         internal string PostUrl(string urlSuffix, string value1, string value2)
         {
             var url = GetUrl(urlSuffix, value1, value2);
-            var client = new HttpClient();
-            var result = client.PostAsync(url, null).Result;
-            if (result.IsSuccessStatusCode)
-                return result.Content.ReadAsStringAsync().Result;
-            else
+            using (var client = new HttpClient())
+            {
+                var result = client.PostAsync(url, null).Result;
+                if (result.IsSuccessStatusCode)
+                    return result.Content.ReadAsStringAsync().Result;
+             
                 return "";
+            }
         }
 
         internal string PostUrlWithPayload(string urlSuffix, string payload)
         {
             var url = GetUrl(urlSuffix);
-            var client = new HttpClient();
-            var result = client.PostAsync(url, new StringContent(payload)).Result;
-            if (result.IsSuccessStatusCode)
-                return result.Content.ReadAsStringAsync().Result;
-            else
+            using (var client = new HttpClient())
+            {
+                var result = client.PostAsync(url, new StringContent(payload)).Result;
+                if (result.IsSuccessStatusCode)
+                    return result.Content.ReadAsStringAsync().Result;
+             
                 return "";
+            }
         }
+
         internal string PostUrlWithPayload(string urlSuffix, string value, string payload)
         {
             var url = GetUrl(urlSuffix, value);
-            var client = new HttpClient();
-            var result = client.PostAsync(url, new StringContent(payload)).Result;
-            if (result.IsSuccessStatusCode)
-                return result.Content.ReadAsStringAsync().Result;
-            return "";
+            using (var client = new HttpClient())
+            {
+                var result = client.PostAsync(url, new StringContent(payload)).Result;
+                if (result.IsSuccessStatusCode)
+                    return result.Content.ReadAsStringAsync().Result;
+
+                return "";
+            }
         }
+
         internal string PostUrlWithPayload(string urlSuffix, string value1, string value2, string payload)
         {
             var url = GetUrl(urlSuffix, value1, value2);
-            var client = new HttpClient();
-            var result = client.PostAsync(url, new StringContent(payload)).Result;
-            if (result.IsSuccessStatusCode)
-                return result.Content.ReadAsStringAsync().Result;
-            else
+            using (var client = new HttpClient())
+            {
+                var result = client.PostAsync(url, new StringContent(payload)).Result;
+                if (result.IsSuccessStatusCode)
+                    return result.Content.ReadAsStringAsync().Result;
+             
                 return "";
+            }
         }
 
         internal Image GetImage(string urlSuffix, string value, string id)
@@ -480,11 +500,13 @@ namespace SoundBoxRemoteLib.Models
                 jobj.Add("address", GetLocalIPAddress());
                 jobj.Add("port", _listenPort);
 
-                var client = new HttpClient();
-                var result = client.PostAsync(url, new StringContent(jobj.ToString())).Result;
+                using (var client = new HttpClient())
+                {
+                    var result = client.PostAsync(url, new StringContent(jobj.ToString())).Result;
 
-                if (result.IsSuccessStatusCode)
-                    return true;
+                    if (result.IsSuccessStatusCode)
+                        return true;
+                }
             }
             return false;
         }
@@ -498,14 +520,16 @@ namespace SoundBoxRemoteLib.Models
                 jobj.Add("address", GetLocalIPAddress());
                 jobj.Add("port", _listenPort);
 
-                var client1 = new HttpClient();
-                var result = client1.PostAsync(url, new StringContent(jobj.ToString())).Result;
-
-                if (!result.IsSuccessStatusCode)
+                using (var client1 = new HttpClient())
                 {
-                    Debug.WriteLine("Client disconnected");
-                    _listener.StopListeningAsync();
-                    return true;
+                    var result = client1.PostAsync(url, new StringContent(jobj.ToString())).Result;
+
+                    if (!result.IsSuccessStatusCode)
+                    {
+                        Debug.WriteLine("Client disconnected");
+                        _listener.StopListeningAsync();
+                        return true;
+                    }
                 }
             }
             return false;
