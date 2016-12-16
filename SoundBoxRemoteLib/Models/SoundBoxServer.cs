@@ -164,75 +164,12 @@ namespace SoundBoxRemoteLib.Models
 
         public static List<SoundBoxServer> FindAllServers()
         {
-            var servers = new List<SoundBoxServer>();
-            CheckConnection();
-            var ip = GetLocalIPAddress();
-            string[] classes = ip.Split('.');
-            var subnet = classes[0] + "." + classes[1] + "." + classes[2] + ".";
-
-            Task<SoundBoxServer>[] task = new Task<SoundBoxServer>[255];
-            for (int i = 0; i < 255; i++)
-            {
-                task[i] = Task<SoundBoxServer>.Factory.StartNew(() =>
-                {
-                    var checkIp = subnet + i.ToString();
-                    SoundBoxServer server = null;
-                    Debug.WriteLine("Checking server {0}", checkIp);
-                    if (CheckForServer(checkIp))
-                        server = SoundBoxServer.LoadFromIP(checkIp);
-
-                    return server;
-                });
-                if (task[i].Result != null)
-                    servers.Add(task[i].Result);
-            }
-
-            return servers;
+            return new ServerDiscovery(URL_SYSTEM_API, MIN_SUPPORTED_VERSION, GetLocalIPAddress()).FindAll();
         }
 
         public static List<SoundBoxServer> FindServersUDP()
         {
-            var servers = new List<SoundBoxServer>();
-            string[] classes = GetLocalIPAddress().Split('.');
-            var broadcast = classes[0] + "." + classes[1] + "." + classes[2] + ".255";
-            
-            var ips = BroadcastUDP(broadcast).Result;
-            foreach (var ip in ips)
-            {
-                servers.Add(new Models.SoundBoxServer(ip));
-            }
-
-            return servers;
-        }
-
-        private static async Task<List<String>> BroadcastUDP(string ipAddress)
-        {
-            var client = new UdpSocketClient();
-            var msg = Encoding.UTF8.GetBytes("SoundBox");
-            var replies = new List<string>();
-            var port = int.Parse(TCP_SERVER_PORT);
-
-            client.MessageReceived += new EventHandler<UdpSocketMessageReceivedEventArgs>(
-                delegate (object sender, UdpSocketMessageReceivedEventArgs args)
-                {
-                    var reply = Encoding.UTF8.GetString(args.ByteData, 0, args.ByteData.Length);
-                    var tab = Convert.ToChar(9);
-                    if (reply.Contains("SoundBox" + tab.ToString()))
-                    {
-                        var parts = reply.Split(tab);
-                        if (!replies.Contains(parts[1]))
-                            replies.Add(parts[1]);
-                    }
-                });
-
-            await client.SendToAsync(msg, ipAddress, port);
-            await Task.Delay(100);
-
-            await client.ConnectAsync(ipAddress, port);
-            await client.SendAsync(msg);
-            await Task.Delay(1000);
-
-            return replies;
+            return new ServerDiscovery(URL_SYSTEM_API, MIN_SUPPORTED_VERSION, GetLocalIPAddress()).FindUDP();
         }
 
         public static SoundBoxServer LoadFromIP(string ipAddress)
@@ -243,55 +180,14 @@ namespace SoundBoxRemoteLib.Models
             return server;
         }
 
-        private static void CheckConnection()
-        {
-            if (!System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
-                throw new Exception();
-        }
-
         internal static string GetLocalIPAddress()
         {
             return DeviceInfo.Connectivity.IpAddress;
         }
 
-        private static bool CheckForServer(string checkIp)
-        {
-            string url = string.Format(URL_SYSTEM_API, checkIp);
-            using (var client = new HttpClient())
-            {
-                client.Timeout = new TimeSpan(0, 0, 0, 0, 10);
-                try
-                {
-                    var response = client.GetAsync(url).Result;
-
-                    if (response.IsSuccessStatusCode)
-                    {
-                        var result = response.Content.ReadAsStringAsync().Result;
-                        APIVersion version = JsonConvert.DeserializeObject<APIVersion>(result);
-                        return version.HighVersion >= MIN_SUPPORTED_VERSION;
-                    }
-
-                    return false;
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine("Error thrown: " + ex.ToString());
-                    return false;
-                }
-            }
-        }
-
         #endregion
 
         #region Internal Methods
-
-        internal string GetAPICodeUrl()
-        {
-            if (ApiCodeRequired)
-                return URL_API_CODE + APICode;
-            else
-                return "";
-        }
 
         internal string GetUrl(string suffix)
         {

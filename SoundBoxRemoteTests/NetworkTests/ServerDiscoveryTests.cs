@@ -11,16 +11,14 @@ namespace SoundBoxRemoteTests.NetworkTests
         [TestMethod]
         public void TestFindAllServers()
         {
-            List<SoundBoxServer> servers;
-            servers = SoundBoxServer.FindAllServers();
+            List<SoundBoxServer> servers = SoundBoxServer.FindAllServers();
             Assert.AreEqual(servers.Count, 1);
         }
 
         [TestMethod]
         public void TestFindAllServersUDP()
         {
-            List<SoundBoxServer> servers;
-            servers = SoundBoxServer.FindServersUDP();
+            List<SoundBoxServer> servers = SoundBoxServer.FindServersUDP();
             Assert.AreNotEqual(servers.Count, 0);
         }
     }

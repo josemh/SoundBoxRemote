@@ -47,6 +47,7 @@
     <Compile Include="Models\TalkTimer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utilities\JsonLoader.cs" />
+    <Compile Include="Utilities\ServerDiscovery.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Acr.DeviceInfo, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
@@ -96,6 +97,9 @@
     <Reference Include="System.Reactive.PlatformServices, Version=2.2.5.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\Rx-PlatformServices.2.2.5\lib\portable-net45+winrt45+wp8+wpa81\System.Reactive.PlatformServices.dll</HintPath>
       <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Threading.Tasks.Parallel">
+      <HintPath>C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETPortable\v4.5\System.Threading.Tasks.Parallel.dll</HintPath>
     </Reference>
     <Reference Include="Xamarin.Forms.Core, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Xamarin.Forms.2.2.0.45\lib\portable-win+net45+wp80+win81+wpa81+MonoAndroid10+MonoTouch10+Xamarin.iOS10\Xamarin.Forms.Core.dll</HintPath>
