@@ -9,6 +9,7 @@ namespace SoundBoxRemoteTests.ModelTests
     [TestClass]
     public class MediaTests : BaseModelTest
     {
+        const int SLEEP_MS = 4000;
          
         [TestMethod]
         public void TestMediaLoadAll()
@@ -24,20 +25,20 @@ namespace SoundBoxRemoteTests.ModelTests
             Assert.IsNotNull(video, "No video media found");
 
             Assert.IsTrue(video.Play(), "Video did not play");
-            Thread.Sleep(1500);
+            Thread.Sleep(SLEEP_MS);
 
             server.MediaStatus.Update();
             Assert.AreEqual(server.MediaStatus.Status, MediaStatus.MediaStatusEnum.Active, "Video media status did not update");
             Assert.AreEqual(video.Id, server.MediaStatus.Id, "Wrong video media Id being reported");
 
             Assert.IsTrue(video.Pause(), "Video did not pause");
-            Thread.Sleep(1000);
+            Thread.Sleep(SLEEP_MS);
 
             server.MediaStatus.Update();
             Assert.AreEqual(server.MediaStatus.Status, MediaStatus.MediaStatusEnum.Paused, "Video media status did not update");
 
             Assert.IsTrue(video.Stop(), "Video did not stop");
-            Thread.Sleep(1000);
+            Thread.Sleep(SLEEP_MS);
 
             server.MediaStatus.Update();
             Assert.AreEqual(server.MediaStatus.Status, MediaStatus.MediaStatusEnum.Inactive, "Video media status did not update");
@@ -52,13 +53,13 @@ namespace SoundBoxRemoteTests.ModelTests
             Assert.IsNotNull(image, "No image loaded");
 
             Assert.IsTrue(image.Play(), "Image did not display");
-            Thread.Sleep(1500);
+            Thread.Sleep(SLEEP_MS);
 
             server.MediaStatus.Update();
             Assert.AreEqual(server.MediaStatus.Status, MediaStatus.MediaStatusEnum.Active, "Image media status not updating");
             
             Assert.IsTrue(image.Stop(), "Image did not stop");
-            Thread.Sleep(1000);
+            Thread.Sleep(SLEEP_MS);
 
             server.MediaStatus.Update();
             Assert.AreEqual(server.MediaStatus.Status, MediaStatus.MediaStatusEnum.Inactive, "Image media status not updating");
